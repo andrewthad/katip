@@ -48,10 +48,9 @@ import           Data.Time
 import           GHC.Generics                 hiding (to)
 import           Language.Haskell.TH
 import qualified Language.Haskell.TH.Syntax   as TH
-import           Lens.Micro
-import           Lens.Micro.TH
 import           Network.HostName
 import           System.Posix
+import           Katip.Internal               (Lens',lens)
 -------------------------------------------------------------------------------
 
 
@@ -211,8 +210,61 @@ data Item a = Item {
     , _itemNamespace :: Namespace
     , _itemLoc       :: Maybe Loc
     } deriving (Generic, Functor)
-makeLenses ''Item
 
+-- | A lens onto the BLANK of an 'Item'.
+itemApp :: Lens' (Item a) Namespace
+itemApp = lens _itemApp setter
+  where setter x y = x { _itemApp = y }
+
+-- | A lens onto the BLANK of an 'Item'.
+itemEnv :: Lens' (Item a) Environment
+itemEnv = lens _itemEnv setter
+  where setter x y = x { _itemEnv = y }
+
+-- | A lens onto the BLANK of an 'Item'.
+itemSeverity :: Lens' (Item a) Severity
+itemSeverity = lens _itemSeverity setter
+  where setter x y = x { _itemSeverity = y }
+
+-- | A lens onto the BLANK of an 'Item'.
+itemThread :: Lens' (Item a) ThreadIdText
+itemThread = lens _itemThread setter
+  where setter x y = x { _itemThread = y }
+
+-- | A lens onto the BLANK of an 'Item'.
+itemHost :: Lens' (Item a) HostName
+itemHost = lens _itemHost setter
+  where setter x y = x { _itemHost = y }
+
+-- | A lens onto the BLANK of an 'Item'.
+itemProcess :: Lens' (Item a) ProcessID
+itemProcess = lens _itemProcess setter
+  where setter x y = x { _itemProcess = y }
+
+-- | A lens onto the BLANK of an 'Item'.
+itemPayload :: Lens' (Item a) a
+itemPayload = lens _itemPayload setter
+  where setter x y = x { _itemPayload = y }
+
+-- | A lens onto the BLANK of an 'Item'.
+itemMessage :: Lens' (Item a) LogStr
+itemMessage = lens _itemMessage setter
+  where setter x y = x { _itemMessage = y }
+
+-- | A lens onto the BLANK of an 'Item'.
+itemTime :: Lens' (Item a) UTCTime
+itemTime = lens _itemTime setter
+  where setter x y = x { _itemTime = y }
+
+-- | A lens onto the BLANK of an 'Item'.
+itemNamespace :: Lens' (Item a) Namespace
+itemNamespace = lens _itemNamespace setter
+  where setter x y = x { _itemNamespace = y }
+
+-- | A lens onto the BLANK of an 'Item'.
+itemLoc :: Lens' (Item a) (Maybe Loc)
+itemLoc = lens _itemLoc setter
+  where setter x y = x { _itemLoc = y }
 
 instance Show a => Show (Item a) where
     show Item{..} = "Item {_itemApp = " ++ show _itemApp ++ ", " ++
@@ -426,7 +478,7 @@ payloadObject verb a = case FT.foldMap (flip payloadKeys a) [(V0)..verb] of
 -- payload based on the desired verbosity. Backends that push JSON
 -- messages should use this to obtain their payload.
 itemJson :: LogItem a => Verbosity -> Item a -> A.Value
-itemJson verb a = toJSON $ a & itemPayload %~ payloadObject verb
+itemJson verb a = toJSON $ a { _itemPayload = payloadObject verb (_itemPayload a)}
 
 
 -------------------------------------------------------------------------------
@@ -490,8 +542,36 @@ data LogEnv = LogEnv {
     -- some output forms to display logs out of order.
     , _logEnvScribes :: M.Map Text Scribe
     }
-makeLenses ''LogEnv
 
+-- | A lens onto the BLANK of a 'LogEnv'.
+logEnvHost :: Lens' LogEnv HostName
+logEnvHost = lens _logEnvHost setter
+  where setter x y = x { _logEnvHost = y }
+
+-- | A lens onto the BLANK of a 'LogEnv'.
+logEnvPid :: Lens' LogEnv ProcessID
+logEnvPid = lens _logEnvPid setter
+  where setter x y = x { _logEnvPid = y }
+
+-- | A lens onto the BLANK of a 'LogEnv'.
+logEnvNs :: Lens' LogEnv Namespace
+logEnvNs = lens _logEnvNs setter
+  where setter x y = x { _logEnvNs = y }
+
+-- | A lens onto the BLANK of a 'LogEnv'.
+logEnvEnv :: Lens' LogEnv Environment
+logEnvEnv = lens _logEnvEnv setter
+  where setter x y = x { _logEnvEnv = y }
+
+-- | A lens onto the BLANK of a 'LogEnv'.
+logEnvTimer :: Lens' LogEnv (IO UTCTime)
+logEnvTimer = lens _logEnvTimer setter
+  where setter x y = x { _logEnvTimer = y }
+
+-- | A lens onto the BLANK of a 'LogEnv'.
+logEnvScribes :: Lens' LogEnv (M.Map Text Scribe)
+logEnvScribes = lens _logEnvScribes setter
+  where setter x y = x { _logEnvScribes = y }
 
 -------------------------------------------------------------------------------
 -- | Create a reasonable default InitLogEnv. Uses an 'AutoUdate' with
@@ -522,7 +602,7 @@ registerScribe
     -> Scribe
     -> LogEnv
     -> LogEnv
-registerScribe nm h = logEnvScribes %~ M.insert nm h
+registerScribe nm h e = e { _logEnvScribes = M.insert nm h (_logEnvScribes e) }
 
 
 -------------------------------------------------------------------------------
@@ -533,7 +613,7 @@ unregisterScribe
     -- ^ Name of the scribe
     -> LogEnv
     -> LogEnv
-unregisterScribe nm = logEnvScribes %~ M.delete nm
+unregisterScribe nm e = e { _logEnvScribes = M.delete nm (_logEnvScribes e) }
 
 
 -------------------------------------------------------------------------------
@@ -542,7 +622,7 @@ unregisterScribe nm = logEnvScribes %~ M.delete nm
 clearScribes
     :: LogEnv
     -> LogEnv
-clearScribes = logEnvScribes .~ mempty
+clearScribes e = e { _logEnvScribes = mempty }
 
 
 -------------------------------------------------------------------------------
